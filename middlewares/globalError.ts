@@ -84,10 +84,13 @@ const errorHandler = (
       break;
   }
 
+  // Stack traces and internal error text are a disclosure risk in production.
+  const isProduction = process.env.NODE_ENV === "production";
   res.status(statusCode).json({
     state: status,
-    message,
-    stack: err.stack,
+    message:
+      isProduction && statusCode >= 500 ? "Internal server error" : message,
+    ...(isProduction ? {} : { stack: err.stack }),
   });
 
   logger.error(
