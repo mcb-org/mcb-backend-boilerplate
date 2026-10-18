@@ -40,6 +40,23 @@ const errorHandler = (
   const status = err.status || "error";
   let { message } = err;
 
+  // Prisma rejecting the request itself is the caller's fault, not a server
+  // fault: unknown or mistyped fields, a reference to a missing record, or a
+  // record that no longer exists. Without this they all surfaced as 500s.
+  if (err.name === "PrismaClientValidationError") {
+    statusCode = 400;
+    message = "Invalid request: unknown or invalid fields";
+  } else if (err.code === "P2002") {
+    statusCode = 409;
+    message = "A record with this value already exists";
+  } else if (err.code === "P2003") {
+    statusCode = 400;
+    message = "Invalid request: it refers to a record that does not exist";
+  } else if (err.code === "P2025") {
+    statusCode = 404;
+    message = "Not found";
+  }
+
   if (err.code === 11000) {
     statusCode = 400;
     const value = err.errmsg?.match(/(["'])(?:\\.|[^\\])*?\1/)?.[0] || "value";
